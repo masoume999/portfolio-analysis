@@ -11,10 +11,15 @@ My Portfolios
             {% for portfolio in portfolios_list%}
             <div class="card shadow-sm my-3">
                 <div class="card-body">
-                    <h5 class="card-title">{{ portfolio.selected_assets }} ({{ portfolio.interval}})</h5>
-                    <h6 class="card-subtitle mb-2 text-muted small py-2">By: {{ portfolio.start_date }}</h6>
-                    <h6 class="card-subtitle mb-2 text-muted small py-2">By: {{ portfolio.end_date }}</h6>
-                    <a href="{% url 'portfolio-analyses' portfolio.id %}" class="btn btn-sm btn-success">View Analyses</a>
+                    <h5 class="card-title">Portfolio {{ portfolio.id }} ({{ portfolio.get_interval_display}})</h5>
+                    <h6 class="card-subtitle mb-2 text-muted py-2">Selected assets:
+                    {% for asset in portfolio.selected_assets.all %}
+                    {{ asset.symbol }}
+                    {% endfor %}
+                    </h6>
+                    <h6 class="card-subtitle mb-2 text-muted py-2">Start date: {{ portfolio.start_date|date:"F j, Y, H:i" }}</h6>
+                    <h6 class="card-subtitle mb-2 text-muted py-2">End date: {{ portfolio.end_date|date:"F j, Y, H:i" }}</h6>
+                    <a  href="{% url 'portfolio-analyses' portfolio.id %}" class="btn btn-sm btn-success">View analyses</a>
                 </div>
             </div>
             {% endfor %}
