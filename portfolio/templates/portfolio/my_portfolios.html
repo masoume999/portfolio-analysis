@@ -1,0 +1,24 @@
+{% extends '_base.html' %}
+
+{% block page_title %}
+My Portfolios
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-9">
+            {% for portfolio in portfolios_list%}
+            <div class="card shadow-sm my-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ portfolio.selected_assets }} ({{ portfolio.interval}})</h5>
+                    <h6 class="card-subtitle mb-2 text-muted small py-2">By: {{ portfolio.start_date }}</h6>
+                    <h6 class="card-subtitle mb-2 text-muted small py-2">By: {{ portfolio.end_date }}</h6>
+                    <a href="{% url 'portfolio-analyses' portfolio.id %}" class="btn btn-sm btn-success">View Analyses</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
