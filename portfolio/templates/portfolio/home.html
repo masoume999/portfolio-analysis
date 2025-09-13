@@ -6,28 +6,12 @@ Home
 {% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; height: 80vh;">
-    <a href="{% url 'create-portfolio' %}"
-       style="padding: 20px 40px; font-size: 32px; background-color: #007BFF; color: white; text-decoration: none; border-radius: 8px;">
-        Get Started
-    </a>
+<div class="container-fluid p-0">
+  <div class="d-flex flex-column justify-content-center align-items-center"
+       style="height: 100vh; background-image: url({% static "images/bg3.gif" %}); background-size: cover; background-position: center;">
+    <a href="{% url 'create-portfolio' %}" class="btn btn-light btn-lg w-50 fw-bold mb-3">Get Started</a>
+    <a href="{% url 'create-portfolio' %}" class="btn btn-light btn-lg w-50 fw-bold mb-3">View All Assets</a>
+
+  </div>
 </div>
 {% endblock %}
-
-<style>
-  body {
-    background-image: url("{% static 'images/bg2.jpg' %}");
-    background-size: cover;
-    background-position: center;
-    filter: blur(8px);
-    height: 100vh;
-    margin: 0;
-  }
-
-  .content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
-  }
