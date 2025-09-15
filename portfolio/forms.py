@@ -2,7 +2,7 @@ from django import forms
 from .models import Portfolio, Asset
 from datetime import datetime, timedelta
 
-class NewPortfolioForm(forms.ModelForm):
+class PortfolioForm(forms.ModelForm):
     selected_assets = forms.ModelMultipleChoiceField(
         queryset=Asset.objects.all(),
         widget=forms.CheckboxSelectMultiple,
