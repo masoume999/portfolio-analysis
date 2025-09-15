@@ -1,0 +1,49 @@
+{% extends '_base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block home %}
+All Assets
+{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+    <div class="card shadow my-3 p-4">
+        <form method="POST" class="d-flex flex-row align-items-end" style="gap: 2rem;">
+            {% csrf_token %}
+
+            <div>
+                {{ form.start_date.label_tag }}
+                {{ form.start_date }}
+            </div>
+
+            <div>
+                {{ form.end_date.label_tag }}
+                {{ form.end_date }}
+            </div>
+
+            <div>
+                {{ form.interval.label_tag }}
+                {{ form.interval }}
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary px-5">Submit</button>
+            </div>
+        </form>
+    </div>
+    {% for symbol in symbols%}
+            <div class="card shadow-sm my-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ symbol }}</h5>
+                    {% with chart=charts|dict_get:symbol %}
+                    {% if chart %}
+                    <img src="data:image/png;base64,{{ chart }}" alt="{{ symbol }} chart">
+                    {% endif %}
+                    {% endwith %}
+                    <a  href="{% url 'asset-analyses' symbol %}" class="btn btn-sm btn-success">View analyses</a>
+                </div>
+            </div>
+    {% endfor %}
+</div>
+{% endblock %}

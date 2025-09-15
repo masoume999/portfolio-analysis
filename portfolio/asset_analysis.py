@@ -1,25 +1,39 @@
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.stattools import adfuller, coint
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as st
 import yfinance as yf
+import io, base64
 
 from .models import Asset
 
 class LoadData():
     data = pd.DataFrame()
     def __init__(self, start_date, end_date, interval, symbols):
-        self.end_time = end_date
         self.start_date = start_date
+        self.end_date = end_date
         self.asset_symbols = symbols
         self.interval = interval
+        self.data = yf.download(self.asset_symbols, self.start_date, self.end_date, self.interval, group_by='ticker')
 
-    def load_data(self):
-        ticker = yf.Ticker(self.asset_symbols)
-        self.data = ticker.history(start=self.start_date, end=self.end_time, interval=self.interval)
-        return self.data
+    def plot_price(self, symbol):
+        price = self.data[symbol]['Close']
+        plt.figure(figsize=(10, 5))
+        plt.plot(price)
+        # plt.title('%s' % symbol, fontsize=14)
+        plt.xlabel('Date', fontsize=12)
+        plt.ylabel('Price', fontsize=12)
+
+        print('Done!')
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        plt.clf()
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 class Statistics():
     return_data = pd.DataFrame()
@@ -57,7 +71,11 @@ class Statistics():
         plt.ylabel(asset_name, fontsize=12)
         plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
         plt.xticks(rotation=60)
-        plt.show()
+
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     def plot_corr_matrix(self):
         rolled = self.return_data.rolling(window=self.window_size)
@@ -67,7 +85,11 @@ class Statistics():
         sns.heatmap(corr_matrix, cmap='coolwarm', annot=True, fmt=".2f", linewidths=0.5)
         plt.title('Rolling Correlation with %s', (self.asset))
         plt.tight_layout()
-        plt.show()
+
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     def get_cointegrated_assets(self):
         asset = self.asset

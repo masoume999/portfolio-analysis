@@ -1,8 +1,10 @@
 from django.shortcuts import render
-from .models import Asset, Portfolio
-from .forms import PortfolioForm
 from django.shortcuts import get_object_or_404, redirect
 from django.views import generic
+
+from .models import Asset, Portfolio
+from .forms import PortfolioForm, AllAssetsForm
+from .asset_analysis import LoadData, Statistics
 
 def home(request):
     return render(request, 'portfolio/home.html')
@@ -28,6 +30,23 @@ def portfolio_analyses(request, pk):
     portfolio = Portfolio.objects.filter(pk=pk)
     return render(request, 'portfolio/portfolio_analyses.html', {'portfolio': portfolio})
 
+def all_assets(request):
+    form = AllAssetsForm(request.POST)
+    symbols = list(Asset.objects.values_list('symbol', flat=True))
+    charts = {}
+    if form.is_valid():
+        start_date = form.cleaned_data['start_date']
+        end_date = form.cleaned_data['end_date']
+        interval = form.cleaned_data['interval']
+        load_data = LoadData(start_date, end_date, interval, symbols)
+        for symbol in symbols:
+            charts[symbol] = load_data.plot_price(symbol)
+
+    return render(request, 'portfolio/all_assets.html', {
+        'form': form, 'charts': charts, 'symbols': symbols})
+
+def asset_analyses(request, pk):
+    return
 
 # class PortfolioCreateView(generic.CreateView):
 #     template_name = 'portfolio/portfolio_create.html'
