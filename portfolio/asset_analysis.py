@@ -13,18 +13,17 @@ from .models import Asset
 
 class LoadData():
     data = pd.DataFrame()
-    def __init__(self, start_date, end_date, interval, symbols):
+    def __init__(self, start_date, end_date, interval):
         self.start_date = start_date
         self.end_date = end_date
-        self.asset_symbols = symbols
+        self.asset_symbols = list(Asset.objects.values_list('symbol', flat=True))
         self.interval = interval
-        self.data = yf.download(self.asset_symbols, self.start_date, self.end_date, self.interval, group_by='ticker')
+        self.data = yf.download(self.asset_symbols, start=self.start_date, end=self.end_date, interval=self.interval)['Close']
 
     def plot_price(self, symbol):
-        price = self.data[symbol]['Close']
+        price = self.data[symbol]
         plt.figure(figsize=(10, 5))
         plt.plot(price)
-        # plt.title('%s' % symbol, fontsize=14)
         plt.xlabel('Date', fontsize=12)
         plt.ylabel('Price', fontsize=12)
 
@@ -38,62 +37,73 @@ class LoadData():
 class Statistics():
     return_data = pd.DataFrame()
 
-    def __init__(self, asset, data, window_size):
-        self.asset = asset
+    def __init__(self, symbol, data, window_size):
+        self.symbol = symbol
         self.window_size = window_size
-        self.data = data
+        # self.data = data[symbol]['Close']
         self.return_data = data.pct_change().dropna()
 
     def perform_statistics(self):
-        returns = self.return_data
+        symbol = self.symbol
         window = self.window_size
-        asset = self.asset
-        stats = pd.DataFrame(index=returns.index, columns=returns.columns)
-        stats['mean'] = returns[asset].rolling(window=window).mean().dropna()
-        stats['var'] = returns[asset].rolling(window=window).var().dropna()
-        stats['hv'] = returns.rolling(window=window).std().dropna()
-        stats['skew'] = returns[asset].rolling(window=window).skew().dropna()
-        stats['kurt'] = returns[asset].rolling(window=window).kurt().dropna()
+        returns = self.return_data[symbol]
+        stats = pd.DataFrame(index=returns.index)
+        stats['Mean'] = returns.rolling(window=window).mean().dropna()
+        stats['Variance'] = returns.rolling(window=window).var().dropna()
+        stats['Historical Volatility'] = returns.rolling(window=window).std().dropna()
+        stats['Skewness'] = returns.rolling(window=window).skew().dropna()
+        stats['Kurtosis'] = returns.rolling(window=window).kurt().dropna()
         return stats
 
     def perform_adf_test(self):
-        returns = self.return_data
-        asset = self.asset
-        result = adfuller(returns[asset])
+        returns = self.return_data[self.symbol]
+        result = adfuller(returns.squeeze())
         is_stationary = result[1] < 0.05
         return is_stationary
 
-    def show_statistics(self, statistic):
-        asset_name = self.asset
-        plt.plot(statistic[asset_name], label=f'{asset_name}')
-        plt.title('Rolling %s of Returns' % (asset_name), fontsize=14)
+    def plot_statistics(self, statistic, stat_name):
+        plt.figure(figsize=(10, 5))
+        plt.plot(statistic[stat_name], label=f'{stat_name}')
+        plt.title('Rolling %s of %s Returns' % (stat_name, self.symbol), fontsize=14)
         plt.xlabel('Date', fontsize=12)
-        plt.ylabel(asset_name, fontsize=12)
-        plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
-        plt.xticks(rotation=60)
+        plt.ylabel(stat_name, fontsize=12)
+        plt.xticks(rotation=30)
 
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         buffer.seek(0)
+        plt.clf()
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     def plot_corr_matrix(self):
-        rolled = self.return_data.rolling(window=self.window_size)
-        corr_with_target = rolled.corr().loc[:, (slice(None), self.asset)]
-        corr_matrix = corr_with_target.droplevel(1, axis=1)
-        plt.figure(figsize=(10, 6))
-        sns.heatmap(corr_matrix, cmap='coolwarm', annot=True, fmt=".2f", linewidths=0.5)
-        plt.title('Rolling Correlation with %s', (self.asset))
-        plt.tight_layout()
+        symbol = self.symbol
+        rolled_corr = self.return_data.rolling(window=self.window_size).corr()
+        corr_with_target = rolled_corr[symbol].dropna()
+        corr_matrix = corr_with_target.unstack(level=1)
+        if symbol in corr_matrix.columns:
+            corr_matrix = corr_matrix.drop(columns=symbol)
+
+        corr_matrix.index = corr_matrix.index.date
+        plt.figure(figsize=(12, 6))
+        sns.heatmap(corr_matrix.T, cmap='coolwarm', annot=False, fmt=".2f", linewidths=0.5)
+        plt.title(f'Rolling Correlation with {self.symbol}')
+        plt.xticks(rotation=30)
+        # plt.ylabel('Other assets', fontsize=12)
+        plt.locator_params(axis='x', nbins=20)
+
+        plt.xlabel("Date")
+        plt.ylabel("Ticker")
 
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         buffer.seek(0)
+        plt.clf()
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     def get_cointegrated_assets(self):
-        asset = self.asset
-        symbols = self.data.columns.tolist().remove(asset)
+        asset = self.symbol
+        symbols = list(Asset.objects.values_list('symbol', flat=True))
+        symbols.remove(asset)
         returns = self.return_data
         results = []
         for symbol in symbols:

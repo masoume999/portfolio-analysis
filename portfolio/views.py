@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views import generic
 
 from .models import Asset, Portfolio
-from .forms import PortfolioForm, AllAssetsForm
+from .forms import PortfolioForm, AllAssetsForm, AssetAnalysisForm
 from .asset_analysis import LoadData, Statistics
 
 def home(request):
@@ -38,15 +38,35 @@ def all_assets(request):
         start_date = form.cleaned_data['start_date']
         end_date = form.cleaned_data['end_date']
         interval = form.cleaned_data['interval']
-        load_data = LoadData(start_date, end_date, interval, symbols)
+        load_data = LoadData(start_date, end_date, interval)
         for symbol in symbols:
             charts[symbol] = load_data.plot_price(symbol)
 
     return render(request, 'portfolio/all_assets.html', {
         'form': form, 'charts': charts, 'symbols': symbols})
 
-def asset_analyses(request, pk):
-    return
+def asset_analyses(request, symbol):
+    form = AssetAnalysisForm(request.POST)
+    charts = []
+    adf_result = None
+    cntg_assets = []
+    if form.is_valid():
+        start_date = form.cleaned_data['start_date']
+        end_date = form.cleaned_data['end_date']
+        interval = form.cleaned_data['interval']
+        window_size = form.cleaned_data['window_size']
+        load_data = LoadData(start_date, end_date, interval)
+        statistics = Statistics(symbol, load_data.data, window_size)
+        adf_result = statistics.perform_adf_test()
+        cntg_assets = statistics.get_cointegrated_assets()
+        stats = statistics.perform_statistics()
+        for stat in stats.columns:
+            charts.append(statistics.plot_statistics(stats, stat))
+        charts.append(statistics.plot_corr_matrix())
+
+    return render(request, 'portfolio/asset_analyses.html',
+                  {'charts': charts, 'cntg_assets':cntg_assets, 'adf_result':adf_result,
+                           'symbol': symbol, 'form': form})
 
 # class PortfolioCreateView(generic.CreateView):
 #     template_name = 'portfolio/portfolio_create.html'
