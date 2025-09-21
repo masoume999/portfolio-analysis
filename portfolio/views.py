@@ -4,7 +4,7 @@ from django.views import generic
 
 from .models import Asset, Portfolio
 from .forms import PortfolioForm, AllAssetsForm, AssetAnalysisForm
-from .asset_analysis import LoadData, Statistics
+from .analysis import LoadData, Statistics, PortfolioAnalysis
 
 def home(request):
     return render(request, 'portfolio/home.html')
@@ -14,7 +14,7 @@ def create_portfolio(request):
         form = PortfolioForm(request.POST)
         if form.is_valid():
             portfolio = form.save(commit=False)
-            portfolio.user = request.user
+            # portfolio.user = request.user
             portfolio.save()
             form.save_m2m()
             return redirect('my-portfolios')
@@ -27,8 +27,10 @@ def my_portfolios(request):
     return render(request, 'portfolio/my_portfolios.html', {'portfolios_list': portfolios_list})
 
 def portfolio_analyses(request, pk):
-    portfolio = Portfolio.objects.filter(pk=pk)
-    return render(request, 'portfolio/portfolio_analyses.html', {'portfolio': portfolio})
+    portfolio = Portfolio.objects.get(pk=pk)
+    portfolio_analysis = PortfolioAnalysis(portfolio)
+    df = portfolio_analysis.rolling_johansen_weights()
+    return render(request, 'portfolio/portfolio_analyses.html', {'portfolio': df})
 
 def all_assets(request):
     form = AllAssetsForm(request.POST)

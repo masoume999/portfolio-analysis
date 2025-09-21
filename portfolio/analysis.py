@@ -8,6 +8,7 @@ import seaborn as sns
 import scipy.stats as st
 import yfinance as yf
 import io, base64
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
 
 from .models import Asset
 
@@ -111,3 +112,37 @@ class Statistics():
             results.append((symbol, pvalue))
         cointegrated = [sym for sym, p in results if p < 0.05]
         return cointegrated
+
+class PortfolioAnalysis():
+    def __init__(self, portfolio):
+        self.portfolio = portfolio
+        self.selected_assets = [asset.symbol for asset in list(portfolio.selected_assets.all())]
+        self.interval = portfolio.interval
+        self.start_date = portfolio.start_date
+        self.end_date = portfolio.end_date
+        self.data = yf.download(self.selected_assets, start=self.start_date, end=self.end_date, interval=self.interval)['Close']
+
+    def rolling_johansen_weights(self, window_size=5):
+        weight_series = []
+        price_data = self.data.dropna()
+
+        for i in range(window_size, len(price_data)):
+            window_prices = price_data.iloc[i - window_size:i]
+
+            try:
+                result = coint_johansen(window_prices, det_order=0, k_ar_diff=1)
+                raw_weights = result.evec[:, 0]
+                normalized_weights = raw_weights / sum(abs(raw_weights))
+
+                weight_series.append({
+                    'date': price_data.index[i],
+                    **{asset: weight for asset, weight in zip(self.selected_assets, normalized_weights)}
+                })
+
+            except Exception as e:
+                weight_series.append({
+                    'date': price_data.index[i],
+                    **{asset: None for asset in self.selected_assets}
+                })
+
+        return pd.DataFrame(weight_series)

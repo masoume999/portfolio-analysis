@@ -13,13 +13,6 @@ class Asset(models.Model):
 
 class Portfolio(models.Model):
     INTERVAL_CHOICES = [
-        ("1m", "1 minute"),
-        ("2m", "2 minutes"),
-        ("5m", "5 minutes"),
-        ("15m", "15 minutes"),
-        ("30m", "30 minutes"),
-        ("60m", "1 hour"),
-        ("90m", "90 minutes"),
         ("1d", "Daily"),
         ("5d", "Every 5 days"),
         ("1wk", "Weekly"),
@@ -28,7 +21,8 @@ class Portfolio(models.Model):
     ]
 
     # user = models.ForeignKey(User, on_delete=models.CASCADE)
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    # user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True, blank=True)
     selected_assets = models.ManyToManyField("Asset")
     interval = models.CharField(choices=INTERVAL_CHOICES, max_length=5)
     start_date = models.DateTimeField(default=datetime(2010, 1, 1, 0, 0))
@@ -37,4 +31,4 @@ class Portfolio(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.created_at}"
+        return f"{self.interval}"
