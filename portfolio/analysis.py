@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from statsmodels.tsa.stattools import adfuller, coint
 import matplotlib
+# from sympy.plotting.intervalmath import interval
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -114,6 +116,11 @@ class Statistics():
         return cointegrated
 
 class PortfolioAnalysis():
+    window_size = 1
+    johansen_weights = pd.DataFrame()
+    portfolio_price = pd.DataFrame()
+    portfolio_return = pd.DataFrame()
+
     def __init__(self, portfolio):
         self.portfolio = portfolio
         self.selected_assets = [asset.symbol for asset in list(portfolio.selected_assets.all())]
@@ -122,9 +129,24 @@ class PortfolioAnalysis():
         self.end_date = portfolio.end_date
         self.data = yf.download(self.selected_assets, start=self.start_date, end=self.end_date, interval=self.interval)['Close']
 
-    def rolling_johansen_weights(self, window_size=5):
+    def set_window_size(self):
+        interval = self.interval
+        if interval == '1d':
+            self.window_size = 25
+        elif interval == '5d':
+            self.window_size = 5
+        elif interval == '1wk':
+            self.window_size = 4
+        elif interval == '1mo':
+            self.window_size = 1
+        elif interval == '3mo':
+            self.window_size = 1
+
+    def rolling_johansen_weights(self):
+        self.set_window_size()
         weight_series = []
         price_data = self.data.dropna()
+        window_size = min(self.window_size, len(price_data))
 
         for i in range(window_size, len(price_data)):
             window_prices = price_data.iloc[i - window_size:i]
@@ -138,11 +160,31 @@ class PortfolioAnalysis():
                     'date': price_data.index[i],
                     **{asset: weight for asset, weight in zip(self.selected_assets, normalized_weights)}
                 })
-
             except Exception as e:
                 weight_series.append({
                     'date': price_data.index[i],
                     **{asset: None for asset in self.selected_assets}
                 })
 
-        return pd.DataFrame(weight_series)
+        weights_df = pd.DataFrame(weight_series)
+        weights_df['date'] = pd.to_datetime(weights_df['date']).dt.date
+        self.johansen_weights = weights_df
+
+    def build_portfolio_series(self):
+        price = self.data.copy()
+        weights = self.johansen_weights.copy()
+        value_df = pd.DataFrame()
+        price['date'] = pd.to_datetime(price.index)
+        weights['date'] = pd.to_datetime(weights['date'])
+
+        merged = price.merge(weights, on='date', suffixes=('_price', '_weight'))
+
+
+        for asset in self.selected_assets:
+            value_df[asset] = merged[f'{asset}_price'] * merged[f'{asset}_weight']
+
+        value_df['date'] = merged['date']
+        value_df['price'] = value_df[self.selected_assets].sum(axis=1)
+        value_df['return'] = value_df['price'].pct_change()
+        self.portfolio_price = value_df[['date', 'price']]
+        self.portfolio_return = value_df[['date', 'return']].dropna()

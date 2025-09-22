@@ -5,6 +5,9 @@ from django.views import generic
 from .models import Asset, Portfolio
 from .forms import PortfolioForm, AllAssetsForm, AssetAnalysisForm
 from .analysis import LoadData, Statistics, PortfolioAnalysis
+from .api.views import JohansenWeightsAPI
+import os
+from config import settings
 
 def home(request):
     return render(request, 'portfolio/home.html')
@@ -29,8 +32,22 @@ def my_portfolios(request):
 def portfolio_analyses(request, pk):
     portfolio = Portfolio.objects.get(pk=pk)
     portfolio_analysis = PortfolioAnalysis(portfolio)
-    df = portfolio_analysis.rolling_johansen_weights()
-    return render(request, 'portfolio/portfolio_analyses.html', {'portfolio': df})
+    portfolio_analysis.rolling_johansen_weights()
+    portfolio_analysis.build_portfolio_series()
+
+    johansen_weights = portfolio_analysis.johansen_weights
+    portfolio_price = portfolio_analysis.portfolio_price
+    portfolio_return = portfolio_analysis.portfolio_return
+
+    johansen_weights_path = os.path.join(settings.MEDIA_ROOT, 'johansen_weights.csv')
+    portfolio_price_path = os.path.join(settings.MEDIA_ROOT, 'portfolio_price.csv')
+    portfolio_return_path = os.path.join(settings.MEDIA_ROOT, 'portfolio_return.csv')
+
+    johansen_weights.to_csv(johansen_weights_path, index=False)
+    portfolio_price.to_csv(portfolio_price_path, index=False)
+    portfolio_return.to_csv(portfolio_return_path, index=False)
+
+    return render(request, 'portfolio/portfolio_analyses.html', {'report_url': f'/api/weights/'})
 
 def all_assets(request):
     form = AllAssetsForm(request.POST)
