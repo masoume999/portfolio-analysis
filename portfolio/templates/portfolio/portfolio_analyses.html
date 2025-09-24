@@ -1,10 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-{{ portfolio }}
-</body>
-</html>
+{% extends '_base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block home %}
+{{ symbol }} analysis
+{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+    <div class="card shadow my-3 p-4">
+        <form method="POST" class="d-flex flex-row align-items-end" style="gap: 2rem;">
+            {% csrf_token %}
+            <div>
+                {{ form.start_date.label_tag }}
+                {{ form.start_date }}
+            </div>
+
+            <div>
+                {{ form.end_date.label_tag }}
+                {{ form.end_date }}
+            </div>
+
+            <div>
+                {{ form.interval.label_tag }}
+                {{ form.interval }}
+            </div>
+
+            <div>
+                {{ form.window_size.label_tag }}
+                {{ form.window_size }}
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary px-5">Submit</button>
+            </div>
+        </form>
+    </div>
+        <div class="card shadow-sm my-3">
+            <div class="card-body">
+                <h5 class="card-title">{{ symbol }}</h5>
+                {% if adf_result %}
+                <h6 class="card-subtitle mb-2 text-muted py-2">Is stationary:
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 1.4rem;"></i>
+                {% else %}
+                <i class="bi bi-x-circle-fill text-danger" style="font-size: 1.4rem;"></i>
+                {% endif %}
+
+                <h6 class="card-subtitle mb-2 text-muted py-2">Cointegrated assets:
+                    {% for asset in cntg_assets %}
+                    {{ asset }}
+                    {% endfor %}
+                </h6>
+
+                {% for chart in charts %}
+                {% if chart %}
+                    <img src="data:image/png;base64,{{ chart }}">
+                    {% else %}
+                    <p>No!</p>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+</div>
+{% endblock %}

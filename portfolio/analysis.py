@@ -241,7 +241,7 @@ class PortfolioAnalysis():
 class RiskIndicators():
     return_data = pd.DataFrame()
     max_drawdown_percentage = 0
-    standard_deviation = 0
+    portfolio_standard_deviation = 0
     sortino_ratio = 0
     value_at_risk = 0
     sharpe_ratio = 0
@@ -249,42 +249,40 @@ class RiskIndicators():
     def __init__(self, return_data):
         self.return_data = return_data
 
-    def get_sharpe_ratio(self, asset, risk_free_rate=0.04, days=255):
-        mean = asset.mean()
-        std = asset.std()
+    def get_sharpe_ratio(self, risk_free_rate=0.04, days=255):
+        return_data = self.return_data
+        mean = return_data.mean()
+        std = return_data.std()
         sharpe_ratio = ((mean - risk_free_rate / days) / std) * np.sqrt(days)
         self.sharpe_ratio = sharpe_ratio
 
-    def get_max_drawdown(self, asset):
-        cumulative_max = asset.cummax()
-        drawdown = (asset - cumulative_max) / cumulative_max
+    def get_max_drawdown(self):
+        return_data = self.return_data
+        cumulative_max = return_data.cummax()
+        drawdown = (return_data - cumulative_max) / cumulative_max
         max_drawdown = drawdown.min()
         max_drawdown_percentage = max_drawdown * 100
         self.max_drawdown_percentage = max_drawdown_percentage
 
-    def get_sortino_ratio(self, asset, risk_free_rate=0.04, days=255):
-        down_side_returns = asset[asset < 0]
-        mean = asset.mean()
+    def get_sortino_ratio(self, risk_free_rate=0.04, days=255):
+        return_data = self.return_data
+        down_side_returns = return_data[return_data < 0]
+        mean = return_data.mean()
         std = down_side_returns.std()
         sortino_ratio = ((mean - risk_free_rate / days) / std) * np.sqrt(days)
         self. sortino_ratio = sortino_ratio
 
-    def portfolio_std_dev(self, weights):
-        returns = self.return_data
-        weights = np.array(weights)
-        portfolio = np.array([returns['Index'].values, returns['Foolad'].values, returns['Fazar'].values])
-        cov_matrix = np.cov(portfolio)
-        portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights))
-        portfolio_std_dev = np.sqrt(portfolio_variance)
-        self.standard_deviation = portfolio_std_dev
-
     def get_VaR(self, confidence_level=0.95):
-        returns = self.return_data
-        num_assets = 6
-        weights = np.repeat(1 / num_assets, num_assets)
-        portfolio_returns = returns.mul(weights)
+        portfolio_returns = self.return_data
         mean = portfolio_returns.mean()
         std_dev = portfolio_returns.std()
         z_score = st.norm.ppf(1 - (1 - confidence_level))
         VaR = mean - (z_score * std_dev)
         self.value_at_risk = VaR
+
+    def get_portfolio_std_dev(self, weights):
+        portfolio_returns = self.return_data
+        cov_matrix = np.cov(portfolio_returns)
+        portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights))
+        portfolio_std_dev = np.sqrt(portfolio_variance)
+        self.standard_deviation = portfolio_std_dev

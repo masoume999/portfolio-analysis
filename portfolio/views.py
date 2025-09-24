@@ -4,7 +4,7 @@ from django.views import generic
 
 from .models import Asset, Portfolio
 from .forms import PortfolioForm, AllAssetsForm, AssetAnalysisForm
-from .analysis import LoadData, Statistics, PortfolioAnalysis
+from .analysis import LoadData, Statistics, PortfolioAnalysis, RiskIndicators
 from .api.views import JohansenWeightsAPI
 import os
 from config import settings
@@ -34,10 +34,28 @@ def portfolio_analyses(request, pk):
     portfolio_analysis = PortfolioAnalysis(portfolio)
     portfolio_analysis.rolling_johansen_weights()
     portfolio_analysis.build_portfolio_series()
+    risks = {}
+    charts = []
 
     johansen_weights = portfolio_analysis.johansen_weights
     portfolio_price = portfolio_analysis.portfolio_price
     portfolio_return = portfolio_analysis.portfolio_return
+    charts.append(portfolio_analysis.plot_return())
+    charts.append(portfolio_analysis.plot_cumulative_return())
+    charts.append(portfolio_analysis.plot_portfolio_return_histogram())
+
+    risk_indicators = RiskIndicators(portfolio_return['return'])
+    risk_indicators.get_sharpe_ratio()
+    risk_indicators.get_sortino_ratio()
+    risk_indicators.get_max_drawdown()
+    risk_indicators.get_VaR()
+    risk_indicators.get_portfolio_std_dev()
+
+    risks['max_drawdown_percentage'] = risk_indicators.max_drawdown_percentage
+    risks['sortino_ratio'] = risk_indicators.sortino_ratio
+    risks['sharpe_ratio'] = risk_indicators.sharpe_ratio
+    risks['alue_at_risk'] = risk_indicators.value_at_risk
+    risks['portfolio_std_dev'] = risk_indicators.portfolio_std_dev
 
     johansen_weights_path = os.path.join(settings.MEDIA_ROOT, 'johansen_weights.csv')
     portfolio_price_path = os.path.join(settings.MEDIA_ROOT, 'portfolio_price.csv')
@@ -47,7 +65,7 @@ def portfolio_analyses(request, pk):
     portfolio_price.to_csv(portfolio_price_path, index=False)
     portfolio_return.to_csv(portfolio_return_path, index=False)
 
-    return render(request, 'portfolio/portfolio_analyses.html', {'report_url': f'/api/weights/'})
+    return render(request, 'portfolio/portfolio_analyses.html', {'risk_indicators': risks, 'charts':charts})
 
 def all_assets(request):
     form = AllAssetsForm(request.POST)
